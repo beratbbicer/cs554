@@ -1,7 +1,6 @@
+function RESULT = SiftMain(img)
 %% Initialization
 % Here, the x-axis correspond to coloum, while the y-axis correspond to row
-clear all; close all;
-img = imread('lena.jpg');
 [~,~,ColorChannel] = size(img);
 if ColorChannel > 1
     img = rgb2gray(img);
@@ -192,51 +191,55 @@ end
 % imgtemp3 = img*0.5;
 % imgtemp3(2:end-1,2:end-1) = (imgtemp3(2:end-1,2:end-1) + (DiffMinMaxMapNoEdge{1,1}+DiffMinMaxMapNoEdge{1,2}+DiffMinMaxMapNoEdge{1,3}))*255;
 % figure,imshow(uint8(imgtemp3));
-imgtemp4 = img*0.5;
-figure,imshow(uint8(imgtemp4*255));
-for i = 1:3
-for j = 1:3
-for k = 1:2
-if isempty(DominantOrientation{i,j})
-continue
+% imgtemp4 = img*0.5;
+% figure,imshow(uint8(imgtemp4*255));
+% for i = 1:3
+% for j = 1:3
+% for k = 1:2
+% if isempty(DominantOrientation{i,j})
+% continue
+% end
+% DomOri = DominantOrientation{i,j}(:,:,k);
+% DOx = cos(DomOri(:,1)).*DomOri(:,2)*200;
+% DOy = sin(DomOri(:,1)).*DomOri(:,2)*200;
+% Map = DiffMinMaxMapNoEdge{i,j};
+% SSCindx = find(Map); % Scale-Space-Corner Index
+% for ssc = 1:length(SSCindx)
+%     hold on;
+%     [Row,Col] = ind2sub([size(Map,1),size(Map,2)], SSCindx(ssc));
+%     Row = Row*2^(i-1)+1; Col = Col*2^(i-1)+1; % offset = [1,1];
+%     if (Row > size(img,1)) || (Col > size(img,2))
+%         continue
+%     end
+%     quiver(Col,Row,DOx(ssc),DOy(ssc),'r')
+% end
+% end
+% end
+% end
+% hold off;
+
+% imgtemp5 = img*0.5;
+% for i = 1:3
+% for j = 1:3
+% for k = 1:2
+% if isempty(DominantOrientation{i,j})
+% continue
+% end
+% Map = DiffMinMaxMapNoEdge{i,j};
+% SSCindx = find(Map); % Scale-Space-Corner Index
+% for ssc = 1:length(SSCindx)
+%     [Row,Col] = ind2sub([size(Map,1),size(Map,2)], SSCindx(ssc));
+%     Row = Row*2^(i-1)+1; Col = Col*2^(i-1)+1; % offset = [1,1];
+%     if (Row > size(img,1)) || (Col > size(img,2))
+%         continue
+%     end
+%     imgtemp5(Row,Col) = 1;
+% end
+% end
+% end
+% end
+% figure,imshow(uint8(imgtemp5*255));
+RESULT.DO = DominantOrientation;
+RESULT.MAP = DiffMinMaxMapNoEdge;
+RESULT.img = img;
 end
-DomOri = DominantOrientation{i,j}(:,:,k);
-DOx = cos(DomOri(:,1)).*DomOri(:,2)*200;
-DOy = sin(DomOri(:,1)).*DomOri(:,2)*200;
-Map = DiffMinMaxMapNoEdge{i,j};
-SSCindx = find(Map); % Scale-Space-Corner Index
-for ssc = 1:length(SSCindx)
-    hold on;
-    [Row,Col] = ind2sub([size(Map,1),size(Map,2)], SSCindx(ssc));
-    Row = Row*2^(i-1)+1; Col = Col*2^(i-1)+1; % offset = [1,1];
-    if (Row > size(img,1)) || (Col > size(img,2))
-        continue
-    end
-    quiver(Col,Row,DOx(ssc),DOy(ssc),'r')
-end
-end
-end
-end
-hold off;
-%
-imgtemp5 = img*0.5;
-for i = 1:3
-for j = 1:3
-for k = 1:2
-if isempty(DominantOrientation{i,j})
-continue
-end
-Map = DiffMinMaxMapNoEdge{i,j};
-SSCindx = find(Map); % Scale-Space-Corner Index
-for ssc = 1:length(SSCindx)
-    [Row,Col] = ind2sub([size(Map,1),size(Map,2)], SSCindx(ssc));
-    Row = Row*2^(i-1)+1; Col = Col*2^(i-1)+1; % offset = [1,1];
-    if (Row > size(img,1)) || (Col > size(img,2))
-        continue
-    end
-    imgtemp5(Row,Col) = 1;
-end
-end
-end
-end
-figure,imshow(uint8(imgtemp5*255));
