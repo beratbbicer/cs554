@@ -1,4 +1,3 @@
-% vl_plotsiftdescriptor(D,F);
 clear;
 clc;
 run('vlfeat/toolbox/vl_setup');
@@ -22,8 +21,6 @@ matching_points1 = matching_points1(IA, :);
 matching_points2 = F2(matching_idx2, 1:2);
 matching_points2 = matching_points2(IA, :);
 clear F1 F2 D1 D2 IA;
-[h, idx] = ransac_homography(matching_points1, matching_points2, 80, 0.4, 1500, 50, 0.5);
-for i = 1:length(idx)
-    [x_p, y_p] = get_correspondance(h, matching_points1(idx(i),1), matching_points1(idx(i),2));
-    disp([matching_points2(idx(i),1) x_p matching_points2(idx(i),2) y_p]);
-end
+[h, idx] = ransac_homography(matching_points1, matching_points2, 80, 0.4, 3000, 50, 0.5);
+rectified_img = rectification(h, cloth1);
+imshow(rectified_img);
