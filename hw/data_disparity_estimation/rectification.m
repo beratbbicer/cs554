@@ -1,4 +1,4 @@
-function rimg = rectification(h, img)
+function [rimg, xmin, ymin] = rectification(h, img)
 [x,y,~] = size(img);
 [xp_tl, yp_tl] = get_correspondance(h,1,1);
 [xp_tr, yp_tr] = get_correspondance(h,1,y);

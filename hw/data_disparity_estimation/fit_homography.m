@@ -12,7 +12,7 @@ for it = 1:iterations
         residuals(i) = distance_homography(pts2(i,1), pts2(i,2), x_p, y_p);
     end
     % disp(residuals');
-    delta_h = pinv(J' * J + randn(8).*(10^-5)) * J' * residuals;
+    delta_h = pinv(J' * J + randn(8).*(10^-5)) * J' * residuals; % buna bi 
     h = h - delta_h' * lambda;
     % avg_res(it) = mean(residuals);
 end

@@ -1,4 +1,4 @@
-function [h, inlier_idx] = ransac_homography(pts1, pts2, threshold, minpts_ratio, h_iternum, iternum, lambda)
+function [h, inlier_idx, inlier_error] = ransac_homography(pts1, pts2, threshold, minpts_ratio, h_iternum, iternum, lambda)
 % New approach: Fit homography once!
 rng(1);
 [x, ~] = size(pts1);
@@ -34,5 +34,6 @@ end
 [~,idx] = min(avg_error);
 h = models(idx,:);
 inlier_idx = find(error(idx,:) < threshold);
+inlier_error = mean(error(idx, inlier_idx));
 end
 
