@@ -10,7 +10,5 @@ if search_window(1) < template_size search_window(1) = template_size; end
 if search_window(2) < template_size search_window(2) = template_size; end
 if mod(search_window(1),2) == 0 search_window(1) = search_window(1) + 1; end
 if mod(search_window(2),2) == 0 search_window(2) = search_window(2) + 1; end
-
-
 end
 
