@@ -1,5 +1,5 @@
 run('vlfeat/toolbox/vl_setup');
-close all
+% close all
 % image_sets = {'im1', 'im2'};
 % data_loc = 'data/';
 % ext = '.png';
@@ -36,9 +36,9 @@ f1 = f1'; f2 = f2'; d1 = d1'; d2 = d2';
 mpts1 = f1(matching_idx1, 1:2); mpts2 = f2(matching_idx2, 1:2);
 [mpts1, mpts2] = clean_matches(mpts1, mpts2);
 
-% subplot(2, 1, 1)
-% show_match(mpts1, mpts2, IMG);
-% title('SIFT Matches')
+subplot(2, 1, 1)
+show_match(mpts1, mpts2, IMG);
+title('SIFT Matches')
 
 % 10, 0.25, 700, 700, 10
 if isfile("Homo.mat")
@@ -63,14 +63,27 @@ subplot(2, 1, 2)
 show_match(mpts1, mpts2, IMG);
 title('RANSAC Matches')
 
-% size(inlier_idx)
-% avg_inlier_error
+stitch(H, im1, im2)
 
-% stitch(H, im1, im2)
-mosaic = im1;
+
+function stitch(H, im1, im2)
+% Extend the image so that the final result can accomadate the affine
+% transformation of im2. Obtain 'mosaic'
 width = floor(size(im2, 2)); height = floor(size(im2, 1));
-mosaic = padarray(mosaic, [0 width], 0, 'post');
-mosaic = padarray(mosaic, [height 0], 0, 'both');
+
+mosaic = pad_affine(im1, width, height);
+
+% Create a mask for mosaic whose elements are '1' if im1 has a pixel there
+im1mask = pad_affine(ones(size(im1)), width, height);
+im1mask = im1mask(:, :, 1);
+% Create a masks for mosaic, will be populated while doing trans. to im2
+im2mask = zeros(size(im1mask));
+
+
+ow_mos = mosaic;
+shi_mos = mosaic;
+alpha_mos = mosaic;
+just_im2 = zeros(size(mosaic));
 ones_row = ones(1, size(mosaic, 1));
 for i = 1:size(mosaic, 2)
     is_row = repmat(i, [1 size(mosaic, 1)]);
@@ -79,68 +92,74 @@ for i = 1:size(mosaic, 2)
     p = floor(p ./ p(3, :));
     for j = 1:size(mosaic, 1)
         if p(1, j) > 0 && p(1, j) <= width && p(2, j) > 0 && p(2, j) <= height
-            mosaic(j, i, :) = im2(p(2, j), p(1, j), :);
+            im2_pixel = im2(p(2, j), p(1, j), :);
+            just_im2(j, i, :) = im2_pixel;
+            ow_mos(j, i, :) = im2_pixel;
+            shi_mos(j, i, :) = mosaic(j, i, :) + im2_pixel;
+            im2mask(j, i) = 1;
         end
     end
 end
-%crop
-[row,col] = find(mosaic);
-c = max(col(:));
-d = max(row(:));
-st=imcrop(mosaic, [1 1 c d]);
+
+[~,col] = find(im1mask ~= 0);
+colmin1 = min(col(:)); colmax1 = max(col(:));
+[~,col] = find(im2mask ~= 0);
+colmin2 = min(col(:)); colmax2 = max(col(:));
+
+W = abs(colmin2 - colmax1);
+alpha_mask1 = flip(1:W)./W;
+z1 = ones(1, colmin2);
+z2 = zeros(1, size(im2mask, 2) - colmax1, 1);
+alpha_mask1 = [z1 alpha_mask1 z2];
+alpha_mask1 = repmat(alpha_mask1, [size(im2mask, 1) 1]);
+alpha_mask1 = im1mask .* alpha_mask1;
+
+W = abs(colmax1 - colmin2);
+alpha_mask2 = (1:W)./W;
+z1 = zeros(1, colmin2);
+z2 = ones(1, size(im2mask, 2) - colmax1, 1);
+alpha_mask2 = [z1 alpha_mask2 z2];
+alpha_mask2 = repmat(alpha_mask2, [size(im2mask, 1) 1]);
+alpha_mask2 = im2mask .* alpha_mask2;
+
+for i = 1:size(mosaic, 2)
+   for j = 1:size(mosaic, 1)
+      if im1mask(j, i) == 1 && im2mask(j, i) == 0
+          alpha_mask1(j, i) = 1;
+      end
+      if im1mask(j, i) == 0 && im2mask(j, i) == 1
+          alpha_mask2(j, i) = 1;
+      end
+   end
+end
+
+blend_im1 = mosaic .* alpha_mask1;
+blend_im2 = just_im2 .* alpha_mask2;
+mosaic = blend_im1 + blend_im2;
+
+% 0--> empty 1--> pixel on an im 2--> pixel on both im
+norm_mask = im1mask + im2mask;
+norm_mask(norm_mask == 2) = 0.5;
+norm_mask = norm_mask(:, :, 1);
+
+% mosaic = shi_mos .* norm_mask;
+% figure; imshow(crop_blacks(ow_mos));
+% figure; imshow(crop_blacks(shi_mos));
+% figure; imshow(crop_blacks(mosaic));
+% figure; imshow(crop_blacks(alpha_mos));
+figure; imshow(crop_blacks(mosaic));
+end
+
+function M = pad_affine(M, W, H)
+M = padarray(M, [0 W], 0, 'post');
+M = padarray(M, [H 0], 0, 'both');
+end
+
+function mosaic = crop_blacks(mosaic)
 [row,col] = find(mosaic ~= 0);
-a = min(col(:));
-b = min(row(:));
-st=imcrop(st, [a b size(st,1) size(st,2)]);
-figure;
-imshow(st);
-
-% Instead of forward warping the original image pixels, the coordinates 
-% for the new pixels are inverse-warped to coordinates that may lie in 
-% between pixels in the original image. If so, the new pixel values are 
-% obtained through linear interpolation.
-% https://inst.eecs.berkeley.edu/~cs194-26/fa17/upload/files/proj6B/cs194-26-abw/
-function stitch(H, im1, im2)
-w = size(im2,2); h = size(im2,1);
-box = [1 w h 1;
-       1 1 w h;
-       1 1 1 1];
-box = inv(H) * box ;
-
-% Divide by homogeneous z, homo --> cartesian
-box(1,:) = box(1,:) ./ box(3,:) ;
-box(2,:) = box(2,:) ./ box(3,:) ;
-
-ur = min([1 box(1,:)]):max([size(im1,2) box(1,:)]) ;
-vr = min([1 box(2,:)]):max([size(im1,1) box(2,:)]) ;
-
-[u,v] = meshgrid(ur,vr) ;
-im1_ = vl_imwbackward(im2double(im1),u,v) ;
-
-z_ = H(3,1) * u + H(3,2) * v + H(3,3) ;
-u_ = (H(1,1) * u + H(1,2) * v + H(1,3)) ./ z_ ;
-v_ = (H(2,1) * u + H(2,2) * v + H(2,3)) ./ z_ ;
-im2_ = vl_imwbackward(im2double(im2),u_,v_) ;
-
-% Calculate combined image pixel values for  blending
-alpha = 0.5;
-mass = alpha * ~isnan(im1_) + (1 - alpha) * ~isnan(im2_);
-mass = ~isnan(im1_) + ~isnan(im2_);
-
-% Blackout NANs 
-im1_(isnan(im1_)) = 0 ;
-im2_(isnan(im2_)) = 0 ;
-
-% Combine images
-% mosaic = (im1_ + im2_);
-
-% Alpha Blending
-mosaic = (im1_ + im2_) ./ 2.*mass ;
-
-figure(2) ; clf ;
-imagesc(mosaic) ; axis image off ;
-title('Mosaic') ;
-
+a = min(col(:)); b = min(row(:));
+c = max(col(:)); d = max(row(:));
+mosaic = imcrop(mosaic, [a b c-a d-b]);
 end
 
 function [mpts1, mpts2] = clean_matches(mpts1, mpts2)
