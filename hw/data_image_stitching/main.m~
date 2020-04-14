@@ -10,6 +10,10 @@ close all
 % figure; imshow(rgb_img);
 % end
 
+% TODO
+% Stich code get rid of VL
+% Alpha blending
+
 IMG.im1_orig = imread('data/im1.png');
 IMG.im2_orig = imread('data/im2.png');
 IMG.im1 = single(rgb2gray(IMG.im1_orig));
@@ -22,13 +26,11 @@ im2 = im2single(IMG.im2_orig);
 [f2, d2] = vl_sift(IMG.im2);
 f1 = f1'; f2 = f2'; d1 = d1'; d2 = d2';
 
-[matches, scores] = vl_ubcmatch(d1', d2');
+% [matches, scores] = vl_ubcmatch(d1', d2');
 % matches = matches(:, 1:50);
 % mpts1 = f1(matches(1, :), 1:2);
 % mpts2 = f2(matches(2, :), 1:2);
 % show_match(mpts1, mpts2, IMG)
-
-
 
 [matching_idx1, matching_idx2] = sift_matching(d1, d2, 2);
 mpts1 = f1(matching_idx1, 1:2); mpts2 = f2(matching_idx2, 1:2);
@@ -38,11 +40,23 @@ mpts1 = f1(matching_idx1, 1:2); mpts2 = f2(matching_idx2, 1:2);
 % show_match(mpts1, mpts2, IMG);
 % title('SIFT Matches')
 
-[h, inlier_idx, avg_inlier_error] = ransac_homography(...
-    mpts1, mpts2, 10, 0.25, 700, 700, 10);
 % 10, 0.25, 700, 700, 10
-mpts1 = mpts1(inlier_idx, :);
-mpts2 = mpts2(inlier_idx, :);
+if isfile("Homo.mat")
+    Homo = load("Homo.mat");
+    H = Homo.H;
+    in_idx = Homo.in_idx;
+else
+    [h, in_idx, avg_inlier_error] = ransac_homography(...
+        mpts1, mpts2, 10, 0.25, 700, 700, 10);
+    H = [h 1];
+    H = reshape(H,3,3)';
+    Homo.H = H;
+    Homo.in_idx = in_idx;
+    save('Homo.mat','Homo');
+end
+
+mpts1 = mpts1(in_idx, :);
+mpts2 = mpts2(in_idx, :);
 
 subplot(2, 1, 2)
 show_match(mpts1, mpts2, IMG);
@@ -51,21 +65,55 @@ title('RANSAC Matches')
 % size(inlier_idx)
 % avg_inlier_error
 
-stitch(h, im1, im2)
+% stitch(H, im1, im2)
+mosaic = im1;
+width = floor(size(im2, 2)); height = floor(size(im2, 1));
+mosaic = padarray(mosaic, [0 width], 0, 'post');
+mosaic = padarray(mosaic, [height 0], 0, 'both');
+ones_row = ones(1, size(mosaic, 1));
+for i = 1:size(mosaic, 2)
+    is_row = repmat(i, [1 size(mosaic, 1)]);
+    j_all = [is_row; (1:size(mosaic, 1)) - height; ones_row];
+    p = H * j_all;
+    p = floor(p ./ p(3, :));
+    for j = 1:size(mosaic, 1)
+%         p = H * [i; j-height; 1];
+%         p = floor(p ./ p(3));
+        if p(1, j) > 0 && p(1, j) <= width && p(2, j) > 0 && p(2, j) <= height
+            mosaic(j, i, :) = im2(p(2, j), p(1, j), :);
+        end
+    end
+end
+%crop
+[row,col] = find(mosaic);
+c = max(col(:));
+d = max(row(:));
+st=imcrop(mosaic, [1 1 c d]);
+[row,col] = find(mosaic ~= 0);
+a = min(col(:));
+b = min(row(:));
+st=imcrop(st, [a b size(st,1) size(st,2)]);
+figure;
+imshow(st);
 
+% Instead of forward warping the original image pixels, the coordinates 
+% for the new pixels are inverse-warped to coordinates that may lie in 
+% between pixels in the original image. If so, the new pixel values are 
+% obtained through linear interpolation.
+% https://inst.eecs.berkeley.edu/~cs194-26/fa17/upload/files/proj6B/cs194-26-abw/
+function stitch(H, im1, im2)
+w = size(im2,2); h = size(im2,1);
+box = [1 w h 1;
+       1 1 w h;
+       1 1 1 1];
+box = inv(H) * box ;
 
-function stitch(h, im1, im2)
-h = [h 1];
-H = reshape(h,3,3)';
+% Divide by homogeneous z, homo --> cartesian
+box(1,:) = box(1,:) ./ box(3,:) ;
+box(2,:) = box(2,:) ./ box(3,:) ;
 
-box2 = [1  size(im2,2) size(im2,2)  1 ;
-        1  1           size(im2,1)  size(im2,1) ;
-        1  1           1            1 ] ;
-box2_ = inv(H) * box2 ;
-box2_(1,:) = box2_(1,:) ./ box2_(3,:) ;
-box2_(2,:) = box2_(2,:) ./ box2_(3,:) ;
-ur = min([1 box2_(1,:)]):max([size(im1,2) box2_(1,:)]) ;
-vr = min([1 box2_(2,:)]):max([size(im1,1) box2_(2,:)]) ;
+ur = min([1 box(1,:)]):max([size(im1,2) box(1,:)]) ;
+vr = min([1 box(2,:)]):max([size(im1,1) box(2,:)]) ;
 
 [u,v] = meshgrid(ur,vr) ;
 im1_ = vl_imwbackward(im2double(im1),u,v) ;
@@ -75,10 +123,20 @@ u_ = (H(1,1) * u + H(1,2) * v + H(1,3)) ./ z_ ;
 v_ = (H(2,1) * u + H(2,2) * v + H(2,3)) ./ z_ ;
 im2_ = vl_imwbackward(im2double(im2),u_,v_) ;
 
-mass = ~isnan(im1_) + ~isnan(im2_) ;
+% Calculate combined image pixel values for  blending
+alpha = 0.5;
+mass = alpha * ~isnan(im1_) + (1 - alpha) * ~isnan(im2_);
+mass = ~isnan(im1_) + ~isnan(im2_);
+
+% Blackout NANs 
 im1_(isnan(im1_)) = 0 ;
 im2_(isnan(im2_)) = 0 ;
-mosaic = (im1_ + im2_) ./ mass ;
+
+% Combine images
+% mosaic = (im1_ + im2_);
+
+% Alpha Blending
+mosaic = (im1_ + im2_) ./ 2.*mass ;
 
 figure(2) ; clf ;
 imagesc(mosaic) ; axis image off ;
