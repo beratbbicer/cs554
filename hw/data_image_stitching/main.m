@@ -11,7 +11,6 @@ run('vlfeat/toolbox/vl_setup');
 % end
 
 % TODO
-% Stich code get rid of VL
 % Alpha blending
 
 IMG.im1_orig = imread('data/im1.png');
@@ -65,6 +64,30 @@ title('RANSAC Matches')
 
 stitch(H, im1, im2)
 
+% % alpha = 1;
+% alpha = 0;
+% W = abs(colmin2 - colmax1);
+% W = floor((1-alpha)*W);
+% alpha_mask1 = flip(1:W)./W;
+% z2 = zeros(1, size(im2mask, 2) - colmax1, 1);
+% z1 = ones(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask1, 2));
+% alpha_mask1 = [z1 alpha_mask1 z2];
+% alpha_mask1 = repmat(alpha_mask1, [size(im2mask, 1) 1]);
+% alpha_mask1 = im1mask .* alpha_mask1;
+% 
+% % W = abs(colmax1 - colmin2);
+% W = floor((alpha)*W);
+% alpha_mask2 = (1:W)./W;
+% z2 = ones(1, size(im2mask, 2) - colmax1, 1);
+% z1 = zeros(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask2, 2));
+% alpha_mask2 = [z1 alpha_mask2 z2];
+% alpha_mask2 = repmat(alpha_mask2, [size(im2mask, 1) 1]);
+% alpha_mask2 = im2mask .* alpha_mask2;
+
+%       if im1mask(j, i) == 1 && im2mask(j, i) == 1
+%           alpha_mask1(j, i) = alpha_mask1(j, i);
+%           alpha_mask2(j, i) = alpha_mask2(j, i);
+%       end
 
 function stitch(H, im1, im2)
 % Extend the image so that the final result can accomadate the affine
@@ -78,7 +101,6 @@ im1mask = pad_affine(ones(size(im1)), width, height);
 im1mask = im1mask(:, :, 1);
 % Create a masks for mosaic, will be populated while doing trans. to im2
 im2mask = zeros(size(im1mask));
-
 
 ow_mos = mosaic;
 shi_mos = mosaic;
@@ -106,6 +128,7 @@ colmin1 = min(col(:)); colmax1 = max(col(:));
 [~,col] = find(im2mask ~= 0);
 colmin2 = min(col(:)); colmax2 = max(col(:));
 
+alpha = 0.7;
 W = abs(colmin2 - colmax1);
 alpha_mask1 = flip(1:W)./W;
 z1 = ones(1, colmin2);
@@ -135,7 +158,7 @@ end
 
 blend_im1 = mosaic .* alpha_mask1;
 blend_im2 = just_im2 .* alpha_mask2;
-mosaic = blend_im1 + blend_im2;
+mosaic = (blend_im1 + blend_im2);
 
 % 0--> empty 1--> pixel on an im 2--> pixel on both im
 norm_mask = im1mask + im2mask;

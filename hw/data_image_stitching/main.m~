@@ -11,7 +11,6 @@ run('vlfeat/toolbox/vl_setup');
 % end
 
 % TODO
-% Stich code get rid of VL
 % Alpha blending
 
 IMG.im1_orig = imread('data/im1.png');
@@ -36,9 +35,9 @@ f1 = f1'; f2 = f2'; d1 = d1'; d2 = d2';
 mpts1 = f1(matching_idx1, 1:2); mpts2 = f2(matching_idx2, 1:2);
 [mpts1, mpts2] = clean_matches(mpts1, mpts2);
 
-% subplot(2, 1, 1)
-% show_match(mpts1, mpts2, IMG);
-% title('SIFT Matches')
+subplot(2, 1, 1)
+show_match(mpts1, mpts2, IMG);
+title('SIFT Matches')
 
 % 10, 0.25, 700, 700, 10
 if isfile("Homo.mat")
@@ -79,7 +78,6 @@ im1mask = im1mask(:, :, 1);
 % Create a masks for mosaic, will be populated while doing trans. to im2
 im2mask = zeros(size(im1mask));
 
-
 ow_mos = mosaic;
 shi_mos = mosaic;
 alpha_mos = mosaic;
@@ -100,34 +98,46 @@ for i = 1:size(mosaic, 2)
         end
     end
 end
+
 [~,col] = find(im1mask ~= 0);
 colmin1 = min(col(:)); colmax1 = max(col(:));
 [~,col] = find(im2mask ~= 0);
 colmin2 = min(col(:)); colmax2 = max(col(:));
 
+% alpha = 1;
+alpha = 0.5;
 W = abs(colmin2 - colmax1);
+W = floor((alpha/0.5)*W);
 alpha_mask1 = flip(1:W)./W;
-z1 = zeros(1, colmin2);
 z2 = zeros(1, size(im2mask, 2) - colmax1, 1);
+z1 = ones(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask1, 2));
 alpha_mask1 = [z1 alpha_mask1 z2];
 alpha_mask1 = repmat(alpha_mask1, [size(im2mask, 1) 1]);
 alpha_mask1 = im1mask .* alpha_mask1;
 
-
-alpha_mask2 = (1:(colmax2-colmin2))./(colmax2-colmin2);
-z1 = zeros(1, colmin2);
-z2 = zeros(1, size(im2mask, 2) - colmax2, 1);
+W = abs(colmax1 - colmin2);
+W = floor((0.5 + alpha)*W);
+alpha_mask2 = (1:W)./W;
+z2 = ones(1, size(im2mask, 2) - colmax1, 1);
+z1 = zeros(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask2, 2));
 alpha_mask2 = [z1 alpha_mask2 z2];
 alpha_mask2 = repmat(alpha_mask2, [size(im2mask, 1) 1]);
 alpha_mask2 = im2mask .* alpha_mask2;
 
+for i = 1:size(mosaic, 2)
+   for j = 1:size(mosaic, 1)
+      if im1mask(j, i) == 1 && im2mask(j, i) == 0
+          alpha_mask1(j, i) = 1;
+      end
+      if im1mask(j, i) == 0 && im2mask(j, i) == 1
+          alpha_mask2(j, i) = 1;
+      end
+   end
+end
+
 blend_im1 = mosaic .* alpha_mask1;
 blend_im2 = just_im2 .* alpha_mask2;
 mosaic = blend_im1 + blend_im2;
-
-alpha_mask1 = flip(1:size(im1, 2))./size(im1, 2);
-alpha_mask1 = repmat(alpha_mask1, [size(im1, 1) 1]);
-alpha_mask1 = pad_affine(alpha_mask1, width, height);
 
 % 0--> empty 1--> pixel on an im 2--> pixel on both im
 norm_mask = im1mask + im2mask;
@@ -140,7 +150,6 @@ norm_mask = norm_mask(:, :, 1);
 % figure; imshow(crop_blacks(mosaic));
 % figure; imshow(crop_blacks(alpha_mos));
 figure; imshow(crop_blacks(mosaic));
-figure; imshow(crop_blacks(mosaic*2));
 end
 
 function M = pad_affine(M, W, H)
