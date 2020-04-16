@@ -1,23 +1,32 @@
 run('vlfeat/toolbox/vl_setup');
-% close all
-% image_sets = {'im1', 'im2'};
-% data_loc = 'data/';
-% ext = '.png';
-% 
-% for i = 1:size(image_sets, 2)
-% orig_img = imread([data_loc image_sets{i} ext]);
-% rgb_img = orig_img;
-% figure; imshow(rgb_img);
-% end
 
-% TODO
-% Alpha blending
+% Sea-Meadow stitch
+% IMG.im1_orig = imread('data/im1.jpg');
+% IMG.im2_orig = imread('data/im2.jpg');
+% mosaic = process_two(IMG, 'outs/dagbayır.png');
 
-IMG.im1_orig = imread('data/im1.png');
-IMG.im2_orig = imread('data/im2.png');
+% Football stitch
+% IMG.im1_orig = imread('data/im89.jpg');
+% IMG.im2_orig = imread('data/im90.jpg');
+% mosaic = process_two(IMG, 'outs/football.png');
+
+% Multi stitch
+% IMG.im1_orig = imread('data/im22.jpg');
+% IMG.im2_orig = imread('data/im23.jpg');
+% mosaic = process_two(IMG, 'outs/combleft2.png');
+
+% IMG.im1_orig = imread('data/im24.jpg');
+% IMG.im2_orig = imread('data/im25.jpg');
+% mosaic = process_two(IMG, 'outs/combright.png');
+
+IMG.im1_orig = imread('outs/combleft2.png');
+IMG.im2_orig = imread('outs/combright.png');
+mosaic = process_two(IMG, 'outs/combfinal2.png');
+
+
+function mosaic = process_two(IMG, savename)
 IMG.im1 = single(rgb2gray(IMG.im1_orig));
 IMG.im2 = single(rgb2gray(IMG.im2_orig));
-
 im1 = im2single(IMG.im1_orig);
 im2 = im2single(IMG.im2_orig);
 
@@ -25,21 +34,16 @@ im2 = im2single(IMG.im2_orig);
 [f2, d2] = vl_sift(IMG.im2);
 f1 = f1'; f2 = f2'; d1 = d1'; d2 = d2';
 
-% [matches, scores] = vl_ubcmatch(d1', d2');
-% matches = matches(:, 1:50);
-% mpts1 = f1(matches(1, :), 1:2);
-% mpts2 = f2(matches(2, :), 1:2);
-% show_match(mpts1, mpts2, IMG)
-
 [matching_idx1, matching_idx2] = sift_matching(d1, d2, 2);
 mpts1 = f1(matching_idx1, 1:2); mpts2 = f2(matching_idx2, 1:2);
 [mpts1, mpts2] = clean_matches(mpts1, mpts2);
 
-subplot(2, 1, 1)
-show_match(mpts1, mpts2, IMG);
-title('SIFT Matches')
+% subplot(2, 1, 1)
+% show_match(mpts1, mpts2, IMG);
+% title(['SIFT Matches ' num2str(size(mpts1, 1)) ' candidates'])
 
-% 10, 0.25, 700, 700, 10
+% 10, 0.25, 700, 700, 10 im1 im2
+% 25, 0.1, 700, 700, 10 football
 if isfile("Homo.mat")
     Homo = load("Homo.mat");
     Homo = Homo.Homo;
@@ -47,49 +51,28 @@ if isfile("Homo.mat")
     in_idx = Homo.in_idx;
 else
     [h, in_idx, avg_inlier_error] = ransac_homography(...
-        mpts1, mpts2, 10, 0.25, 700, 700, 10);
+        mpts1, mpts2, 4, 0.05, 1500, 2000, 10);
+    size(in_idx, 2)
+    avg_inlier_error
     H = [h 1];
     H = reshape(H,3,3)';
     Homo.H = H;
     Homo.in_idx = in_idx;
-    save('Homo.mat','Homo');
+%     save('Homo.mat','Homo');
 end
 
 mpts1 = mpts1(in_idx, :);
 mpts2 = mpts2(in_idx, :);
 
-subplot(2, 1, 2)
-show_match(mpts1, mpts2, IMG);
-title('RANSAC Matches')
+% subplot(2, 1, 2)
+% show_match(mpts1, mpts2, IMG);
+% title(['RANSAC Matches, ' num2str(size(mpts1, 1)) ' candidates'])
 
-stitch(H, im1, im2)
+mosaic = stitch(H, im1, im2);
+imwrite(mosaic, savename);
+end
 
-% % alpha = 1;
-% alpha = 0;
-% W = abs(colmin2 - colmax1);
-% W = floor((1-alpha)*W);
-% alpha_mask1 = flip(1:W)./W;
-% z2 = zeros(1, size(im2mask, 2) - colmax1, 1);
-% z1 = ones(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask1, 2));
-% alpha_mask1 = [z1 alpha_mask1 z2];
-% alpha_mask1 = repmat(alpha_mask1, [size(im2mask, 1) 1]);
-% alpha_mask1 = im1mask .* alpha_mask1;
-% 
-% % W = abs(colmax1 - colmin2);
-% W = floor((alpha)*W);
-% alpha_mask2 = (1:W)./W;
-% z2 = ones(1, size(im2mask, 2) - colmax1, 1);
-% z1 = zeros(1, size(im2mask, 2) - size(z2, 2) - size(alpha_mask2, 2));
-% alpha_mask2 = [z1 alpha_mask2 z2];
-% alpha_mask2 = repmat(alpha_mask2, [size(im2mask, 1) 1]);
-% alpha_mask2 = im2mask .* alpha_mask2;
-
-%       if im1mask(j, i) == 1 && im2mask(j, i) == 1
-%           alpha_mask1(j, i) = alpha_mask1(j, i);
-%           alpha_mask2(j, i) = alpha_mask2(j, i);
-%       end
-
-function stitch(H, im1, im2)
+function mosaic = stitch(H, im1, im2)
 % Extend the image so that the final result can accomadate the affine
 % transformation of im2. Obtain 'mosaic'
 width = floor(size(im2, 2)); height = floor(size(im2, 1));
@@ -103,8 +86,6 @@ im1mask = im1mask(:, :, 1);
 im2mask = zeros(size(im1mask));
 
 ow_mos = mosaic;
-shi_mos = mosaic;
-alpha_mos = mosaic;
 just_im2 = zeros(size(mosaic));
 ones_row = ones(1, size(mosaic, 1));
 for i = 1:size(mosaic, 2)
@@ -117,7 +98,6 @@ for i = 1:size(mosaic, 2)
             im2_pixel = im2(p(2, j), p(1, j), :);
             just_im2(j, i, :) = im2_pixel;
             ow_mos(j, i, :) = im2_pixel;
-            shi_mos(j, i, :) = mosaic(j, i, :) + im2_pixel;
             im2mask(j, i) = 1;
         end
     end
@@ -128,49 +108,62 @@ colmin1 = min(col(:)); colmax1 = max(col(:));
 [~,col] = find(im2mask ~= 0);
 colmin2 = min(col(:)); colmax2 = max(col(:));
 
-alpha = 0.7;
 W = abs(colmin2 - colmax1);
-alpha_mask1 = flip(1:W)./W;
+alpha_mask2 = (1:W)./W;
+alpha_mask1 = flip(alpha_mask2);
+
 z1 = ones(1, colmin2);
 z2 = zeros(1, size(im2mask, 2) - colmax1, 1);
 alpha_mask1 = [z1 alpha_mask1 z2];
 alpha_mask1 = repmat(alpha_mask1, [size(im2mask, 1) 1]);
 alpha_mask1 = im1mask .* alpha_mask1;
 
-W = abs(colmax1 - colmin2);
-alpha_mask2 = (1:W)./W;
 z1 = zeros(1, colmin2);
 z2 = ones(1, size(im2mask, 2) - colmax1, 1);
 alpha_mask2 = [z1 alpha_mask2 z2];
 alpha_mask2 = repmat(alpha_mask2, [size(im2mask, 1) 1]);
 alpha_mask2 = im2mask .* alpha_mask2;
 
+alpha = 0.1;
+gm1 = alpha_mask1; gm2 = alpha_mask2;
 for i = 1:size(mosaic, 2)
    for j = 1:size(mosaic, 1)
       if im1mask(j, i) == 1 && im2mask(j, i) == 0
           alpha_mask1(j, i) = 1;
+          gm1(j, i) = 1;
       end
       if im1mask(j, i) == 0 && im2mask(j, i) == 1
           alpha_mask2(j, i) = 1;
+          gm2(j, i) = 1;
+      end
+      if im1mask(j, i) == 1 && im2mask(j, i) == 1
+          alpha_mask1(j, i) = alpha;
+          alpha_mask2(j, i) = 1-alpha;
       end
    end
 end
 
-blend_im1 = mosaic .* alpha_mask1;
-blend_im2 = just_im2 .* alpha_mask2;
-mosaic = (blend_im1 + blend_im2);
+alp_im1 = mosaic .* alpha_mask1;
+alp_im2 = just_im2 .* alpha_mask2;
+alp_mos = (alp_im1 + alp_im2);
+
+gra_im1 = mosaic .* gm1;
+gra_im2 = just_im2 .* gm2;
+mosaic = (gra_im1 + gra_im2);
 
 % 0--> empty 1--> pixel on an im 2--> pixel on both im
 norm_mask = im1mask + im2mask;
 norm_mask(norm_mask == 2) = 0.5;
 norm_mask = norm_mask(:, :, 1);
-
 % mosaic = shi_mos .* norm_mask;
-% figure; imshow(crop_blacks(ow_mos));
-% figure; imshow(crop_blacks(shi_mos));
-% figure; imshow(crop_blacks(mosaic));
-% figure; imshow(crop_blacks(alpha_mos));
-figure; imshow(crop_blacks(mosaic));
+
+[row,~] = find(mosaic(:, 1) ~= 0);
+b = min(row(:)); d = max(row(:));
+mosaic = imcrop(mosaic, [1 b size(mosaic, 2) d-b]);
+[row,col] = find(mosaic(:,:,1) ~= 0);
+c = max(col(:)); d = max(row(:));
+mosaic = imcrop(mosaic, [1 1 c-1 d-1]);
+figure; imshow(mosaic);
 end
 
 function M = pad_affine(M, W, H)
@@ -198,12 +191,12 @@ mpts2 = mpts2(unique_idx,:);
 end
 
 function f = show_match(mpts1, mpts2, IMG)
-adjusted_im1 = [IMG.im1_orig; zeros(1, size(IMG.im1_orig, 2), ...
-    size(IMG.im1_orig, 3))];
+% adjusted_im1 = [IMG.im1_orig; zeros(1, size(IMG.im1_orig, 2), ...
+%     size(IMG.im1_orig, 3))];
 numPoints = size(mpts1, 1);
 offset_width = size(IMG.im1, 2);
-% figure;
-imshow([adjusted_im1 IMG.im2_orig]);
+imshow([IMG.im1_orig IMG.im2_orig])
+% imshow([adjusted_im1 IMG.im2_orig]);
 hold on;
 for i = 1 : numPoints
     plot(mpts1(i, 1), mpts1(i, 2), 'b*', mpts2(i, 1) + offset_width, ...
