@@ -1,0 +1,6 @@
+Authors:
+Ergün Batuhan Kaynak 21501178
+Berat Biçer
+
+Two parts of the homework are contained in folders data_image_stitching (Part 1) and data_disparity_estimation (Part 2).
+Each of these folders contain a 'main.m' file that reproduces our results.
