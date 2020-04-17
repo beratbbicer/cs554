@@ -62,10 +62,14 @@
 clear;
 clc;
 run('vlfeat/toolbox/vl_setup');
-plastic1 = imread('../data/plastic1.png');
-plastic2 = imread('../data/plastic2.png');
-plastic1_disp = imread('../data/plastic1_disp.png');
-plastic2_disp = imread('../data/plastic2_disp.png');
+% plastic1 = imread('../data/plastic1.png');
+% plastic2 = imread('../data/plastic2.png');
+% plastic1_disp = imread('../data/plastic1_disp.png');
+% plastic2_disp = imread('../data/plastic2_disp.png');
+plastic1 = imread('data/plastic1.png');
+plastic2 = imread('data/plastic2.png');
+plastic1_disp = imread('data/plastic1_disp.png');
+plastic2_disp = imread('data/plastic2_disp.png');
 plastic1_gray_sp = im2single(rgb2gray(plastic1));
 plastic2_gray_sp = im2single(rgb2gray(plastic2));
 [F1,D1] = vl_sift(plastic1_gray_sp);
