@@ -8,10 +8,6 @@ from utils import ImageTransforms
 
 
 class SRDataset(Dataset):
-    """
-    A PyTorch Dataset to be used by a PyTorch DataLoader.
-    """
-
     def __init__(self, data_folder, split, crop_size, scaling_factor, lr_img_type, hr_img_type, test_data_name=None):
         """
         :param data_folder: # folder with JSON data files
@@ -42,39 +38,31 @@ class SRDataset(Dataset):
         if self.split == 'train':
             assert self.crop_size % self.scaling_factor == 0, "Crop dimensions are not perfectly divisible by scaling factor! This will lead to a mismatch in the dimensions of the original HR patches and their super-resolved (SR) versions!"
 
-        # Read list of image-paths
         if self.split == 'train':
-            with open(os.path.join(data_folder, 'train_images.json'), 'r') as j:
+            tr_loc = os.path.join(data_folder, 'train/hr') + '/'
+            self.images = os.listdir(os.path.join(data_folder, 'train/hr'))
+            self.images = [tr_loc + s for s in self.images]
+        else:
+            self.images = os.listdir(os.path.join(data_folder, 'test/hr'))
+        # Read list of image-paths
+        """if self.split == 'train':
+            with open(os.path.join(data_folder, 'train/hr.json'), 'r') as j:
                 self.images = json.load(j)
         else:
             with open(os.path.join(data_folder, self.test_data_name + '_test_images.json'), 'r') as j:
-                self.images = json.load(j)
+                self.images = json.load(j)"""
 
         # Select the correct set of transforms
-        self.transform = ImageTransforms(split=self.split,
-                                         crop_size=self.crop_size,
-                                         scaling_factor=self.scaling_factor,
-                                         lr_img_type=self.lr_img_type,
-                                         hr_img_type=self.hr_img_type)
+        self.transform = ImageTransforms(split=self.split, crop_size=self.crop_size, scaling_factor=self.scaling_factor,
+                                         lr_img_type=self.lr_img_type, hr_img_type=self.hr_img_type)
 
     def __getitem__(self, i):
-        """
-        This method is required to be defined for use in the PyTorch DataLoader.
-        :param i: index to retrieve
-        :return: the 'i'th pair LR and HR images to be fed into the model
-        """
-        # Read image
         img = Image.open(self.images[i], mode='r')
         img = img.convert('RGB')
         if img.width <= 96 or img.height <= 96:
             print(self.images[i], img.width, img.height)
         lr_img, hr_img = self.transform(img)
-
         return lr_img, hr_img
 
     def __len__(self):
-        """
-        This method is required to be defined for use in the PyTorch DataLoader.
-        :return: size of this data (in number of images)
-        """
         return len(self.images)
