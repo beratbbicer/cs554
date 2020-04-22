@@ -163,10 +163,6 @@ class ImageTransforms(object):
 
 
 class AverageMeter(object):
-    """
-    Keeps track of most recent, average, sum, and count of a metric.
-    """
-
     def __init__(self):
         self.reset()
 
@@ -193,16 +189,6 @@ def clip_gradient(optimizer, grad_clip):
         for param in group['params']:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
-
-
-def save_checkpoint(state, filename):
-    """
-    Save model checkpoint.
-    :param state: checkpoint contents
-    """
-
-    torch.save(state, filename)
-
 
 def adjust_learning_rate(optimizer, shrink_factor):
     """
