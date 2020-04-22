@@ -5,11 +5,11 @@ import torchvision.transforms.functional as FT
 
 
 class LowDataset(Dataset):
-    def __init__(self):
+    def __init__(self, ds_name='train'):
         data_folder = 'data'
-        tr_loc = os.path.join(data_folder, 'train/') + '/'
-        self.images = os.listdir(os.path.join(data_folder, 'train/'))
-        self.images = [tr_loc + s for s in self.images]
+        data_loc = os.path.join(data_folder, ds_name)
+        self.images = os.listdir(data_loc)
+        self.images = [data_loc  + '/' + s for s in self.images]
     
     def __getitem__(self, i):
         img = Image.open(self.images[i], mode='r')
