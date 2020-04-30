@@ -1,2 +1,3 @@
 project/res/srresnet/data/train/*
 project/res/srresnet/data/valid/*
+project/res/srresnet/data/checkpoint_srgan.pth.tar
