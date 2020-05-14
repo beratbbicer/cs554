@@ -1,5 +1,3 @@
-project/res/srresnet/data/train/*
-project/res/srresnet/data/valid/*
-project/res/srresnet/data/checkpoint_srgan.pth.tar
-project/res/srresnet/data/coco_tr
-project/res/srresnet/data/coco_val
+project/res/srresnet/data/*
+project/res/srresnet/chks/*
+project/res/srresnet/final_chks/*
