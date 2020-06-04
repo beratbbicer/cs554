@@ -10,7 +10,7 @@ def psnr(img1, img2):
     if mse == 0:
         return 100
     PIXEL_MAX = 255.0
-    return 20 * np.log10(PIXEL_MAX / np.sqrt(mse))
+    return 10 * np.log10(PIXEL_MAX / np.sqrt(mse))
 
 
 def model_eval(model_path, datapath, savepath):
