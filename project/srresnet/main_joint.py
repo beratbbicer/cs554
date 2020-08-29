@@ -10,7 +10,7 @@ import numpy as np
 
 # Data parameters
 data_folder = 'data'
-crop_size = 128  # crop size of target HR images
+crop_size = 256  # crop size of target HR images
 scaling_factor = 2  # the scaling factor for the generator; the input LR images will be downsampled from the target HR images by this factor
 lr_dim = crop_size // scaling_factor
 
@@ -20,8 +20,8 @@ small_kernel_size = 3  # kernel size of all convolutions in-between, i.e. those 
 n_blocks = 16  # number of residual blocks
 
 # Learning parameters
-checkpoint = None #'test.pth.tar'
-batch_size = 128  # batch size
+checkpoint = '13j3_128r2.pth.tar' #None #'test.pth.tar'
+batch_size = 32  # batch size
 start_epoch = 0  # start at this epoch
 iterations = 1e6  # number of training iterations
 workers = 4
@@ -121,7 +121,7 @@ def main():
     for epoch in range(start_epoch, epochs):
         Ltr, Lval = train(train_loader=train_loader, valid_loader=valid_loader, model=model, criterion=criterion, optimizer=optimizer, 
               epoch=epoch, Ltr=Ltr, Lval=Lval)
-        torch.save({'epoch': epoch, 'model': model, 'optimizer': optimizer, 'Ltr':Ltr, 'Lval':Lval}, str(epoch) + 'j3_128r2.pth.tar')
+        torch.save({'epoch': epoch, 'model': model, 'optimizer': optimizer, 'Ltr':Ltr, 'Lval':Lval}, str(epoch) + 'j3_256r2.pth.tar')
         #torch.save({'epoch': epoch, 'model': model, 'optimizer': optimizer, 'Ltr':Ltr, 'Lval':Lval}, 'test.pth.tar')
         
         """

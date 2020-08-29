@@ -1,3 +1,4 @@
-project/res/srresnet/data/*
-project/res/srresnet/chks/*
-project/res/srresnet/final_chks/*
+project/srresnet/chks/*
+project/srresnet/data/*
+project/srresnet/gan_chks/*
+project/srresnet/python-uncompyle6/*
